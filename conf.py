@@ -41,7 +41,7 @@ USER_AGENTS = [
 PROXY = {'http': "http://127.0.0.1:9743/"}
 
 BOOK_LINK_PATTERN = 'href="(.*)" rel="bookmark">'
-DOWNLOAD_LINK_PATTERN = '<a href="(.*)" target="_blank">Download PDF'
+DOWNLOAD_LINK_PATTERN = '<a href="(http:\/\/file.*)" target="_blank">'
 
 BASE_URL = 'http://www.allitebooks.com'
 
