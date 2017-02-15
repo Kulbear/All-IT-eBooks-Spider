@@ -1,26 +1,18 @@
 # -*- coding: utf-8 -*-
-# 不用去看视频了，看我操作就行了
-import random
 import re
 import time
 import urllib.request
 
 import conf as cf
 
+BASE_URL = 'http://www.allitebooks.com'
 
-class KanWoCaoZuo:
-    BASE_URL = 'http://www.allitebooks.com'
+class MyCrawler:
 
-    def __init__(self):
-        self.start_page = 1
-        self.headers = {
-            'User-Agent': random.choice(cf.USER_AGENTS),
-            'Connection': 'keep-alive',
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-            'Referer': 'http://www.allitebooks.com/',
-            'Accept-Encoding': 'gzip, deflate, sdch',
-            'Accept-Language': 'en-US,en;q=0.8',
-        }
+    def __init__(self, base_url=cf.BASE_URL, header=cf.FAKE_HEADER, start_page=1):
+        self.base_url = base_url
+        self.start_page = start_page
+        self.headers = header
 
     # 链接代理
     def build_proxy(self):
@@ -33,11 +25,10 @@ class KanWoCaoZuo:
         while True:
             try:
                 req = urllib.request.Request(
-                    KanWoCaoZuo.BASE_URL + '/page/{}'.format(self.start_page), headers=self.headers)
+                    self.base_url + '/page/{}'.format(self.start_page), headers=self.headers)
                 html = urllib.request.urlopen(req)
                 doc = html.read().decode('utf8')
-                alist = list(
-                    set(re.findall(cf.BOOK_LINK_PATTERN, doc)))
+                alist = list(set(re.findall(cf.BOOK_LINK_PATTERN, doc)))
                 print('Now working on page {}\n'.format(self.start_page))
                 time.sleep(20)
                 self.start_page += 1
@@ -63,6 +54,6 @@ class KanWoCaoZuo:
 
 
 if __name__ == '__main__':
-    caozuo = KanWoCaoZuo()
-    caozuo.build_proxy()
-    caozuo.run()
+    mc = MyCrawler()
+    # mc.build_proxy()
+    mc.run()

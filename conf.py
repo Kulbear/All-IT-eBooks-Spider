@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import random
 
 USER_AGENTS = [
     "Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1; AcooBrowser; .NET CLR 1.1.4322; .NET CLR 2.0.50727)",
@@ -41,3 +42,14 @@ PROXY = {'http': "http://127.0.0.1:9743/"}
 
 BOOK_LINK_PATTERN = 'href="(.*)" rel="bookmark">'
 DOWNLOAD_LINK_PATTERN = '<a href="(.*)" target="_blank">Download PDF'
+
+BASE_URL = 'http://www.allitebooks.com'
+
+FAKE_HEADER = {
+    'User-Agent': random.choice(USER_AGENTS),
+    'Connection': 'keep-alive',
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+    'Referer': 'http://www.allitebooks.com/',
+    'Accept-Encoding': 'gzip, deflate, sdch',
+    'Accept-Language': 'en-US,en;q=0.8',
+}
