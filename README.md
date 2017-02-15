@@ -1,5 +1,8 @@
 # All-IT-eBooks-Spider
 
+项目地址：https://github.com/Kulbear/All-IT-eBooks-Spider
+喜欢欢迎Star！
+
 ### 简介
 ---
 最近在公司实习，项目多数和爬虫有关，越发的感觉爬虫十分的好用，闲来无事便有了这个小程序。
@@ -126,31 +129,21 @@ BeautifulSoup这里不过多做叙述，简单来说，这个库可以帮你很�
 
 具体到每个页面以后的工作变得十分简单，通过访问每本书的detail页面，检查源代码，可以很轻松的提取出页面里Download PDF按钮对应的下载链接。
 
-    <footer class="entry-footer clearfix">
-        <div class="entry-meta clearfix">
-            <span class="download-links">
-    								<a href="http://file.allitebooks.com/20160720/SSL VPN.pdf" target="_blank">Download PDF (34.2 MB)</a>
-    							</span>
-            <span class="download-links">
-    								<a href="http://www.allitebooks.com/read/read.php?p=SSL VPN" target="_blank">Read Online</a>
-    							</span>
-            <span class="entry-actions">
-    								<div class="addthis_sharing_toolbox"></div><script type="text/javascript" src="//s7.addthis.com/js/300/addthis_widget.js#pubid=ra-546867a1086d729e" async="async"></script>
-    							</span>
-            <!-- END .entry-actions -->
-        </div>
-        <!-- END .entry-meta -->
-    </footer>
+```
+<span class="download-links">
+<a href="http://file.allitebooks.com/20160908/Expert Android Studio.pdf" target="_blank"><i class="fa fa-download" aria-hidden="true"></i> Download PDF <span class="download-size">(48.5 MB)</span></a>
+</span>
+```
 
 其中，
 
-    <a href="http://file.allitebooks.com/20160720/SSL VPN.pdf" target="_blank">Download PDF (34.2 MB)</a>
+    <a href="http://file.allitebooks.com/20160908/Expert Android Studio.pdf" target="_blank"><i class="fa fa-download" aria-hidden="true"></i> Download PDF <span class="download-size">(48.5 MB)</span></a>
 
 就是我们需要的部分了。
 
 故技重施，使用如下的正则表达式匹配这一段HTML代码：
 
-    <a href="(.*)" target="_blank">Download PDF
+    <a href="(http:\/\/file.*)" target="_blank">
 
 这段代码就不分解放出了，自己动手吧（源码和Github链接在最后）。
 
@@ -173,120 +166,127 @@ Github: https://github.com/JiYangE/All-IT-eBooks-Spider
 
 文件1 crawler.py
 
-    # -*- coding: utf-8 -*-
-    # 不用去看视频了，看我操作就行了
-    import random
-    import re
-    import time
-    import urllib.request
+```
+# -*- coding: utf-8 -*-
+import re
+import time
+import urllib.request
 
-    import conf as cf
+import conf as cf
 
+BASE_URL = 'http://www.allitebooks.com'
 
-    class KanWoCaoZuo:
-        BASE_URL = 'http://www.allitebooks.com'
+class MyCrawler:
 
-        def __init__(self):
-            self.start_page = 1
-            self.headers = {
-                'User-Agent': random.choice(cf.USER_AGENTS),
-                'Connection': 'keep-alive',
-                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-                'Referer': 'http://www.allitebooks.com/',
-                'Accept-Encoding': 'gzip, deflate, sdch',
-                'Accept-Language': 'en-US,en;q=0.8',
-            }
+    def __init__(self, base_url=cf.BASE_URL, header=cf.FAKE_HEADER, start_page=1):
+        self.base_url = base_url
+        self.start_page = start_page
+        self.headers = header
 
-        # 链接代理
-        def build_proxy(self):
-            proxy = cf.PROXY
-            proxy_support = urllib.request.ProxyHandler(proxy)
-            opener = urllib.request.build_opener(proxy_support)
-            urllib.request.install_opener(opener)
+    # 链接代理
+    def build_proxy(self):
+        proxy = cf.PROXY
+        proxy_support = urllib.request.ProxyHandler(proxy)
+        opener = urllib.request.build_opener(proxy_support)
+        urllib.request.install_opener(opener)
 
-        def fetch_book_name_list(self):
-            while True:
-                try:
-                    req = urllib.request.Request(
-                        KanWoCaoZuo.BASE_URL + '/page/{}'.format(self.start_page), headers=self.headers)
-                    html = urllib.request.urlopen(req)
-                    doc = html.read().decode('utf8')
-                    alist = list(
-                        set(re.findall(cf.BOOK_LINK_PATTERN, doc)))
-                    print('Now working on page {}\n'.format(self.start_page))
-                    time.sleep(20)
-                    self.start_page += 1
-                    self.fetch_download_link(alist)
-                except urllib.error.HTTPError as err:
-                    print(err.msg)
-                    break
-
-        def fetch_download_link(self, alist):
-            f = open('result.txt', 'a')
-            for item in alist:
-                req = urllib.request.Request(item)
+    def fetch_book_name_list(self):
+        while True:
+            try:
+                req = urllib.request.Request(
+                    self.base_url + '/page/{}'.format(self.start_page), headers=self.headers)
                 html = urllib.request.urlopen(req)
                 doc = html.read().decode('utf8')
-                url = re.findall(cf.DOWNLOAD_LINK_PATTERN, doc)[0]
-                print('Storing {}'.format(url))
-                f.write(url + '\n')
-                time.sleep(7)
-            f.close()
+                alist = list(set(re.findall(cf.BOOK_LINK_PATTERN, doc)))
+                print('Now working on page {}\n'.format(self.start_page))
+                time.sleep(20)
+                self.start_page += 1
+                self.fetch_download_link(alist)
+            except urllib.error.HTTPError as err:
+                print(err.msg)
+                break
 
-        def run(self):
-            self.fetch_book_name_list()
+    def fetch_download_link(self, alist):
+        f = open('result.txt', 'a')
+        for item in alist:
+            req = urllib.request.Request(item)
+            html = urllib.request.urlopen(req)
+            doc = html.read().decode('utf8')
+            url = re.findall(cf.DOWNLOAD_LINK_PATTERN, doc)[0]
+            print('Storing {}'.format(url))
+            f.write(url + '\n')
+            time.sleep(7)
+        f.close()
+
+    def run(self):
+        self.fetch_book_name_list()
 
 
-    if __name__ == '__main__':
-        caozuo = KanWoCaoZuo()
-        caozuo.build_proxy()
-        caozuo.run()
+if __name__ == '__main__':
+    mc = MyCrawler()
+    # mc.build_proxy()
+    mc.run()
+```
 
 文件2 conf.py
 
-    # -*- coding: utf-8 -*-
+```
+# -*- coding: utf-8 -*-
+import random
 
-    USER_AGENTS = [
-        "Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1; AcooBrowser; .NET CLR 1.1.4322; .NET CLR 2.0.50727)",
-        "Mozilla/4.0 (compatible; MSIE 7.0; Windows NT 6.0; Acoo Browser; SLCC1; .NET CLR 2.0.50727; Media Center PC 5.0; .NET CLR 3.0.04506)",
-        "Mozilla/4.0 (compatible; MSIE 7.0; AOL 9.5; AOLBuild 4337.35; Windows NT 5.1; .NET CLR 1.1.4322; .NET CLR 2.0.50727)",
-        "Mozilla/5.0 (Windows; U; MSIE 9.0; Windows NT 9.0; en-US)",
-        "Mozilla/5.0 (compatible; MSIE 9.0; Windows NT 6.1; Win64; x64; Trident/5.0; .NET CLR 3.5.30729; .NET CLR 3.0.30729; .NET CLR 2.0.50727; Media Center PC 6.0)",
-        "Mozilla/5.0 (compatible; MSIE 8.0; Windows NT 6.0; Trident/4.0; WOW64; Trident/4.0; SLCC2; .NET CLR 2.0.50727; .NET CLR 3.5.30729; .NET CLR 3.0.30729; .NET CLR 1.0.3705; .NET CLR 1.1.4322)",
-        "Mozilla/4.0 (compatible; MSIE 7.0b; Windows NT 5.2; .NET CLR 1.1.4322; .NET CLR 2.0.50727; InfoPath.2; .NET CLR 3.0.04506.30)",
-        "Mozilla/5.0 (Windows; U; Windows NT 5.1; zh-CN) AppleWebKit/523.15 (KHTML, like Gecko, Safari/419.3) Arora/0.3 (Change: 287 c9dfb30)",
-        "Mozilla/5.0 (X11; U; Linux; en-US) AppleWebKit/527+ (KHTML, like Gecko, Safari/419.3) Arora/0.6",
-        "Mozilla/5.0 (Windows; U; Windows NT 5.1; en-US; rv:1.8.1.2pre) Gecko/20070215 K-Ninja/2.1.1",
-        "Mozilla/5.0 (Windows; U; Windows NT 5.1; zh-CN; rv:1.9) Gecko/20080705 Firefox/3.0 Kapiko/3.0",
-        "Mozilla/5.0 (X11; Linux i686; U;) Gecko/20070322 Kazehakase/0.4.5",
-        "Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.9.0.8) Gecko Fedora/1.9.0.8-1.fc10 Kazehakase/0.5.6",
-        "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/535.11 (KHTML, like Gecko) Chrome/17.0.963.56 Safari/535.11",
-        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_7_3) AppleWebKit/535.20 (KHTML, like Gecko) Chrome/19.0.1036.7 Safari/535.20",
-        "Opera/9.80 (Macintosh; Intel Mac OS X 10.6.8; U; fr) Presto/2.9.168 Version/11.52",
-        "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/536.11 (KHTML, like Gecko) Chrome/20.0.1132.11 TaoBrowser/2.0 Safari/536.11",
-        "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.1 (KHTML, like Gecko) Chrome/21.0.1180.71 Safari/537.1 LBBROWSER",
-        "Mozilla/5.0 (compatible; MSIE 9.0; Windows NT 6.1; WOW64; Trident/5.0; SLCC2; .NET CLR 2.0.50727; .NET CLR 3.5.30729; .NET CLR 3.0.30729; Media Center PC 6.0; .NET4.0C; .NET4.0E; LBBROWSER)",
-        "Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1; QQDownload 732; .NET4.0C; .NET4.0E; LBBROWSER)",
-        "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/535.11 (KHTML, like Gecko) Chrome/17.0.963.84 Safari/535.11 LBBROWSER",
-        "Mozilla/4.0 (compatible; MSIE 7.0; Windows NT 6.1; WOW64; Trident/5.0; SLCC2; .NET CLR 2.0.50727; .NET CLR 3.5.30729; .NET CLR 3.0.30729; Media Center PC 6.0; .NET4.0C; .NET4.0E)",
-        "Mozilla/5.0 (compatible; MSIE 9.0; Windows NT 6.1; WOW64; Trident/5.0; SLCC2; .NET CLR 2.0.50727; .NET CLR 3.5.30729; .NET CLR 3.0.30729; Media Center PC 6.0; .NET4.0C; .NET4.0E; QQBrowser/7.0.3698.400)",
-        "Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1; QQDownload 732; .NET4.0C; .NET4.0E)",
-        "Mozilla/4.0 (compatible; MSIE 7.0; Windows NT 5.1; Trident/4.0; SV1; QQDownload 732; .NET4.0C; .NET4.0E; 360SE)",
-        "Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1; QQDownload 732; .NET4.0C; .NET4.0E)",
-        "Mozilla/4.0 (compatible; MSIE 7.0; Windows NT 6.1; WOW64; Trident/5.0; SLCC2; .NET CLR 2.0.50727; .NET CLR 3.5.30729; .NET CLR 3.0.30729; Media Center PC 6.0; .NET4.0C; .NET4.0E)",
-        "Mozilla/5.0 (Windows NT 5.1) AppleWebKit/537.1 (KHTML, like Gecko) Chrome/21.0.1180.89 Safari/537.1",
-        "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.1 (KHTML, like Gecko) Chrome/21.0.1180.89 Safari/537.1",
-        "Mozilla/5.0 (iPad; U; CPU OS 4_2_1 like Mac OS X; zh-cn) AppleWebKit/533.17.9 (KHTML, like Gecko) Version/5.0.2 Mobile/8C148 Safari/6533.18.5",
-        "Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:2.0b13pre) Gecko/20110307 Firefox/4.0b13pre",
-        "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:16.0) Gecko/20100101 Firefox/16.0",
-        "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.11 (KHTML, like Gecko) Chrome/23.0.1271.64 Safari/537.11",
-        "Mozilla/5.0 (X11; U; Linux x86_64; zh-CN; rv:1.9.2.10) Gecko/20100922 Ubuntu/10.10 (maverick) Firefox/3.6.10"
-    ]
+USER_AGENTS = [
+    "Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1; AcooBrowser; .NET CLR 1.1.4322; .NET CLR 2.0.50727)",
+    "Mozilla/4.0 (compatible; MSIE 7.0; Windows NT 6.0; Acoo Browser; SLCC1; .NET CLR 2.0.50727; Media Center PC 5.0; .NET CLR 3.0.04506)",
+    "Mozilla/4.0 (compatible; MSIE 7.0; AOL 9.5; AOLBuild 4337.35; Windows NT 5.1; .NET CLR 1.1.4322; .NET CLR 2.0.50727)",
+    "Mozilla/5.0 (Windows; U; MSIE 9.0; Windows NT 9.0; en-US)",
+    "Mozilla/5.0 (compatible; MSIE 9.0; Windows NT 6.1; Win64; x64; Trident/5.0; .NET CLR 3.5.30729; .NET CLR 3.0.30729; .NET CLR 2.0.50727; Media Center PC 6.0)",
+    "Mozilla/5.0 (compatible; MSIE 8.0; Windows NT 6.0; Trident/4.0; WOW64; Trident/4.0; SLCC2; .NET CLR 2.0.50727; .NET CLR 3.5.30729; .NET CLR 3.0.30729; .NET CLR 1.0.3705; .NET CLR 1.1.4322)",
+    "Mozilla/4.0 (compatible; MSIE 7.0b; Windows NT 5.2; .NET CLR 1.1.4322; .NET CLR 2.0.50727; InfoPath.2; .NET CLR 3.0.04506.30)",
+    "Mozilla/5.0 (Windows; U; Windows NT 5.1; zh-CN) AppleWebKit/523.15 (KHTML, like Gecko, Safari/419.3) Arora/0.3 (Change: 287 c9dfb30)",
+    "Mozilla/5.0 (X11; U; Linux; en-US) AppleWebKit/527+ (KHTML, like Gecko, Safari/419.3) Arora/0.6",
+    "Mozilla/5.0 (Windows; U; Windows NT 5.1; en-US; rv:1.8.1.2pre) Gecko/20070215 K-Ninja/2.1.1",
+    "Mozilla/5.0 (Windows; U; Windows NT 5.1; zh-CN; rv:1.9) Gecko/20080705 Firefox/3.0 Kapiko/3.0",
+    "Mozilla/5.0 (X11; Linux i686; U;) Gecko/20070322 Kazehakase/0.4.5",
+    "Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.9.0.8) Gecko Fedora/1.9.0.8-1.fc10 Kazehakase/0.5.6",
+    "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/535.11 (KHTML, like Gecko) Chrome/17.0.963.56 Safari/535.11",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_7_3) AppleWebKit/535.20 (KHTML, like Gecko) Chrome/19.0.1036.7 Safari/535.20",
+    "Opera/9.80 (Macintosh; Intel Mac OS X 10.6.8; U; fr) Presto/2.9.168 Version/11.52",
+    "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/536.11 (KHTML, like Gecko) Chrome/20.0.1132.11 TaoBrowser/2.0 Safari/536.11",
+    "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.1 (KHTML, like Gecko) Chrome/21.0.1180.71 Safari/537.1 LBBROWSER",
+    "Mozilla/5.0 (compatible; MSIE 9.0; Windows NT 6.1; WOW64; Trident/5.0; SLCC2; .NET CLR 2.0.50727; .NET CLR 3.5.30729; .NET CLR 3.0.30729; Media Center PC 6.0; .NET4.0C; .NET4.0E; LBBROWSER)",
+    "Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1; QQDownload 732; .NET4.0C; .NET4.0E; LBBROWSER)",
+    "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/535.11 (KHTML, like Gecko) Chrome/17.0.963.84 Safari/535.11 LBBROWSER",
+    "Mozilla/4.0 (compatible; MSIE 7.0; Windows NT 6.1; WOW64; Trident/5.0; SLCC2; .NET CLR 2.0.50727; .NET CLR 3.5.30729; .NET CLR 3.0.30729; Media Center PC 6.0; .NET4.0C; .NET4.0E)",
+    "Mozilla/5.0 (compatible; MSIE 9.0; Windows NT 6.1; WOW64; Trident/5.0; SLCC2; .NET CLR 2.0.50727; .NET CLR 3.5.30729; .NET CLR 3.0.30729; Media Center PC 6.0; .NET4.0C; .NET4.0E; QQBrowser/7.0.3698.400)",
+    "Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1; QQDownload 732; .NET4.0C; .NET4.0E)",
+    "Mozilla/4.0 (compatible; MSIE 7.0; Windows NT 5.1; Trident/4.0; SV1; QQDownload 732; .NET4.0C; .NET4.0E; 360SE)",
+    "Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1; QQDownload 732; .NET4.0C; .NET4.0E)",
+    "Mozilla/4.0 (compatible; MSIE 7.0; Windows NT 6.1; WOW64; Trident/5.0; SLCC2; .NET CLR 2.0.50727; .NET CLR 3.5.30729; .NET CLR 3.0.30729; Media Center PC 6.0; .NET4.0C; .NET4.0E)",
+    "Mozilla/5.0 (Windows NT 5.1) AppleWebKit/537.1 (KHTML, like Gecko) Chrome/21.0.1180.89 Safari/537.1",
+    "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.1 (KHTML, like Gecko) Chrome/21.0.1180.89 Safari/537.1",
+    "Mozilla/5.0 (iPad; U; CPU OS 4_2_1 like Mac OS X; zh-cn) AppleWebKit/533.17.9 (KHTML, like Gecko) Version/5.0.2 Mobile/8C148 Safari/6533.18.5",
+    "Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:2.0b13pre) Gecko/20110307 Firefox/4.0b13pre",
+    "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:16.0) Gecko/20100101 Firefox/16.0",
+    "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.11 (KHTML, like Gecko) Chrome/23.0.1271.64 Safari/537.11",
+    "Mozilla/5.0 (X11; U; Linux x86_64; zh-CN; rv:1.9.2.10) Gecko/20100922 Ubuntu/10.10 (maverick) Firefox/3.6.10"
+]
 
-    PROXY = {'http': "http://127.0.0.1:9743/"}
+PROXY = {'http': "http://127.0.0.1:9743/"}
 
-    BOOK_LINK_PATTERN = 'href="(.*)" rel="bookmark">'
-    DOWNLOAD_LINK_PATTERN = '<a href="(.*)" target="_blank">Download PDF'
+BOOK_LINK_PATTERN = 'href="(.*)" rel="bookmark">'
+DOWNLOAD_LINK_PATTERN = '<a href="(http:\/\/file.*)" target="_blank">'
+
+BASE_URL = 'http://www.allitebooks.com'
+
+FAKE_HEADER = {
+    'User-Agent': random.choice(USER_AGENTS),
+    'Connection': 'keep-alive',
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+    'Referer': 'http://www.allitebooks.com/',
+    'Accept-Encoding': 'gzip, deflate, sdch',
+    'Accept-Language': 'en-US,en;q=0.8',
+}
+```
 
 运行结果文件 result.txt 内容：
 
